@@ -229,7 +229,48 @@
     </form>
   </div>
 
-  <div id="app-screen" hidden></div>
+  <div id="app-screen" hidden>
+    <header class="header">
+      <h1>Shelf</h1>
+      <button id="sign-out-btn" class="btn" type="button">Sign Out</button>
+    </header>
+
+    <main class="main-content">
+      <section class="upload-section">
+        <div id="drop-zone" class="drop-zone" tabindex="0" role="button"
+             aria-label="Drop files here or click to browse">
+          <p>Drop files here or click to browse</p>
+          <p class="drop-zone-hint">Max 10 MB — text, markdown, PDF</p>
+        </div>
+        <input type="file" id="file-input" hidden
+          accept=".txt,.md,.markdown,.pdf,text/plain,text/markdown,application/pdf">
+        <div id="file-info" class="file-info" hidden>
+          <span id="file-info-name"></span>
+          <span id="file-info-size"></span>
+          <button id="upload-btn" class="btn btn-primary" type="button">Upload</button>
+          <button id="clear-file-btn" class="btn" type="button">Clear</button>
+        </div>
+        <p id="upload-status" class="status-message" hidden></p>
+      </section>
+
+      <section class="files-section">
+        <h2>Your files</h2>
+        <table id="file-table" class="file-table">
+          <thead>
+            <tr>
+              <th>Filename</th>
+              <th>Size</th>
+              <th>Uploaded</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="file-table-body">
+          </tbody>
+        </table>
+        <p id="empty-state" class="empty-state">No files yet. Drop one above.</p>
+      </section>
+    </main>
+  </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"
     integrity="sha384-Sm2s7OXxsAMTyJ4iIyRBgVpeGUvMPk2lRQnnZhE78Wej7oggIoolKt+SCt0XJbUB"
