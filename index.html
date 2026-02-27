@@ -294,8 +294,67 @@
     const loginError    = document.getElementById('login-error');
     const signOutBtn    = document.getElementById('sign-out-btn');
 
-    // ── Stubs (replaced in later tasks) ─────────────────────────
-    async function deriveKey(passphrase) { return null; }
+    // ── Encryption ──────────────────────────────────────────────
+    // Fixed salt for PBKDF2. Changing this invalidates all encrypted files.
+    const PBKDF2_SALT = new Uint8Array([
+      0x73, 0x68, 0x65, 0x6c, 0x66, 0x2d, 0x73, 0x61,
+      0x6c, 0x74, 0x2d, 0x76, 0x31, 0x2d, 0x30, 0x30
+    ]);
+    // ASCII bytes of "shelf-salt-v1-00"
+
+    const PBKDF2_ITERATIONS = 100_000;
+    const IV_LENGTH = 12; // bytes, required by AES-GCM
+
+    async function deriveKey(passphrase) {
+      const enc = new TextEncoder();
+      const keyMaterial = await crypto.subtle.importKey(
+        'raw',
+        enc.encode(passphrase),
+        'PBKDF2',
+        false,
+        ['deriveKey']
+      );
+      return crypto.subtle.deriveKey(
+        {
+          name: 'PBKDF2',
+          salt: PBKDF2_SALT,
+          iterations: PBKDF2_ITERATIONS,
+          hash: 'SHA-256',
+        },
+        keyMaterial,
+        { name: 'AES-GCM', length: 256 },
+        false,        // not extractable
+        ['encrypt', 'decrypt']
+      );
+    }
+
+    async function encryptBlob(key, plainBytes) {
+      const iv = crypto.getRandomValues(new Uint8Array(IV_LENGTH));
+      const ciphertext = await crypto.subtle.encrypt(
+        { name: 'AES-GCM', iv },
+        key,
+        plainBytes
+      );
+      // Prepend IV to ciphertext: [ IV (12 bytes) | ciphertext ]
+      const result = new Uint8Array(IV_LENGTH + ciphertext.byteLength);
+      result.set(iv, 0);
+      result.set(new Uint8Array(ciphertext), IV_LENGTH);
+      return result;
+    }
+
+    async function decryptBlob(key, encryptedBytes) {
+      const data = new Uint8Array(encryptedBytes);
+      const iv         = data.slice(0, IV_LENGTH);
+      const ciphertext = data.slice(IV_LENGTH);
+      const plaintext = await crypto.subtle.decrypt(
+        { name: 'AES-GCM', iv },
+        key,
+        ciphertext
+      );
+      return plaintext; // ArrayBuffer
+    }
+
+    // ── Stub (replaced in Task 6) ────────────────────────────────
     async function loadFiles() {}
 
     // ── Auth ────────────────────────────────────────────────────
