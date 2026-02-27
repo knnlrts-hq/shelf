@@ -354,8 +354,120 @@
       return plaintext; // ArrayBuffer
     }
 
-    // ── Stub (replaced in Task 6) ────────────────────────────────
-    async function loadFiles() {}
+    // ── DOM refs (file table) ───────────────────────────────────
+    const fileTableBody = document.getElementById('file-table-body');
+    const emptyState    = document.getElementById('empty-state');
+    const fileTable     = document.getElementById('file-table');
+
+    // ── Load files ──────────────────────────────────────────────
+    async function loadFiles() {
+      const { data: rows, error } = await sb
+        .from('blob_index')
+        .select('id, filename, content_type, size_bytes, created_at')
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Failed to load files:', error.message);
+        return;
+      }
+
+      // Clear table
+      fileTableBody.textContent = '';
+
+      if (!rows || rows.length === 0) {
+        fileTable.hidden = true;
+        emptyState.hidden = false;
+        return;
+      }
+
+      fileTable.hidden = false;
+      emptyState.hidden = true;
+
+      for (const row of rows) {
+        const tr = document.createElement('tr');
+
+        // Filename cell
+        const tdName = document.createElement('td');
+        tdName.textContent = row.filename;
+        tr.appendChild(tdName);
+
+        // Size cell
+        const tdSize = document.createElement('td');
+        tdSize.textContent = formatBytes(row.size_bytes);
+        tr.appendChild(tdSize);
+
+        // Date cell
+        const tdDate = document.createElement('td');
+        tdDate.textContent = new Date(row.created_at).toLocaleDateString();
+        tr.appendChild(tdDate);
+
+        // Actions cell
+        const tdActions = document.createElement('td');
+
+        const dlBtn = document.createElement('button');
+        dlBtn.textContent = 'Download';
+        dlBtn.className = 'btn btn-primary btn-sm';
+        dlBtn.addEventListener('click', () => downloadFile(row.id, dlBtn));
+        tdActions.appendChild(dlBtn);
+
+        const delBtn = document.createElement('button');
+        delBtn.textContent = 'Delete';
+        delBtn.className = 'btn btn-danger btn-sm';
+        delBtn.addEventListener('click', () => deleteFile(row.id, delBtn));
+        tdActions.appendChild(delBtn);
+
+        tr.appendChild(tdActions);
+        fileTableBody.appendChild(tr);
+      }
+    }
+
+    // ── Download ────────────────────────────────────────────────
+    async function downloadFile(blobId, btn) {
+      btn.disabled = true;
+      btn.textContent = 'Decrypting…';
+
+      try {
+        // Get metadata
+        const { data: row, error: rowError } = await sb
+          .from('blob_index')
+          .select('object_path, filename, content_type')
+          .eq('id', blobId)
+          .single();
+
+        if (rowError) throw rowError;
+
+        // Download encrypted blob from Storage
+        const { data: encryptedBlob, error: dlError } = await sb.storage
+          .from(BUCKET)
+          .download(row.object_path);
+
+        if (dlError) throw dlError;
+
+        // Decrypt
+        const encryptedBytes = await encryptedBlob.arrayBuffer();
+        const plainBytes = await decryptBlob(encryptionKey, encryptedBytes);
+
+        // Trigger browser download
+        const blob = new Blob([plainBytes], { type: row.content_type });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = row.filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      } catch (err) {
+        if (err.message && err.message.includes('decrypt')) {
+          alert('Decryption failed — wrong passphrase?');
+        } else {
+          alert('Download failed: ' + err.message);
+        }
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Download';
+      }
+    }
 
     // ── DOM refs (upload) ───────────────────────────────────────
     const dropZone      = document.getElementById('drop-zone');
