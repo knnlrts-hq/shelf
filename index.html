@@ -276,6 +276,82 @@
     integrity="sha384-Sm2s7OXxsAMTyJ4iIyRBgVpeGUvMPk2lRQnnZhE78Wej7oggIoolKt+SCt0XJbUB"
     crossorigin="anonymous"></script>
   <script>
+    // ── Config ──────────────────────────────────────────────────
+    const SUPABASE_URL = 'https://cxylcljlxdizvqlcioee.supabase.co';
+    const SUPABASE_KEY = 'sb_publishable_BhPS6OwiH31kIeF6GNyEAg_e0vMseib';
+    const BUCKET = 'private-blobs';
+    const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
+
+    const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    // ── State ───────────────────────────────────────────────────
+    let encryptionKey = null;  // CryptoKey, held in memory only
+
+    // ── DOM refs ────────────────────────────────────────────────
+    const loginScreen   = document.getElementById('login-screen');
+    const appScreen     = document.getElementById('app-screen');
+    const loginForm     = document.getElementById('login-form');
+    const loginError    = document.getElementById('login-error');
+    const signOutBtn    = document.getElementById('sign-out-btn');
+
+    // ── Stubs (replaced in later tasks) ─────────────────────────
+    async function deriveKey(passphrase) { return null; }
+    async function loadFiles() {}
+
+    // ── Auth ────────────────────────────────────────────────────
+    function showLogin() {
+      loginScreen.hidden = false;
+      appScreen.hidden   = true;
+      encryptionKey      = null;   // wipe key on sign out
+    }
+
+    function showApp() {
+      loginScreen.hidden = true;
+      appScreen.hidden   = false;
+    }
+
+    function showLoginError(msg) {
+      loginError.textContent = msg;
+      loginError.hidden      = false;
+    }
+
+    loginForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      loginError.hidden = true;
+
+      const email      = document.getElementById('email').value.trim();
+      const password   = document.getElementById('password').value;
+      const passphrase = document.getElementById('passphrase').value;
+
+      if (!passphrase) {
+        showLoginError('Encryption passphrase is required.');
+        return;
+      }
+
+      const { error } = await sb.auth.signInWithPassword({ email, password });
+      if (error) {
+        showLoginError(error.message);
+        return;
+      }
+
+      // Derive encryption key (implemented in Task 4)
+      encryptionKey = await deriveKey(passphrase);
+
+      // Clear passphrase from the form
+      document.getElementById('passphrase').value = '';
+
+      showApp();
+      await loadFiles();  // implemented in Task 6
+    });
+
+    signOutBtn.addEventListener('click', async () => {
+      await sb.auth.signOut();
+      showLogin();
+    });
+
+    // ── Session check on page load ──────────────────────────────
+    // Always show login — user must re-enter passphrase every session.
+    showLogin();
   </script>
 </body>
 </html>
