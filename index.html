@@ -469,6 +469,46 @@
       }
     }
 
+    // ── Delete ──────────────────────────────────────────────────
+    async function deleteFile(blobId, btn) {
+      if (!confirm('Delete this file permanently?')) return;
+
+      btn.disabled = true;
+      btn.textContent = 'Deleting…';
+
+      try {
+        // Get metadata (we need object_path)
+        const { data: row, error: rowError } = await sb
+          .from('blob_index')
+          .select('object_path')
+          .eq('id', blobId)
+          .single();
+
+        if (rowError) throw rowError;
+
+        // Delete from Storage first
+        const { error: storageError } = await sb.storage
+          .from(BUCKET)
+          .remove([row.object_path]);
+
+        if (storageError) throw storageError;
+
+        // Delete metadata row
+        const { error: dbError } = await sb
+          .from('blob_index')
+          .delete()
+          .eq('id', blobId);
+
+        if (dbError) throw dbError;
+
+        await loadFiles();
+      } catch (err) {
+        alert('Delete failed: ' + err.message);
+        btn.disabled = false;
+        btn.textContent = 'Delete';
+      }
+    }
+
     // ── DOM refs (upload) ───────────────────────────────────────
     const dropZone      = document.getElementById('drop-zone');
     const fileInput     = document.getElementById('file-input');
