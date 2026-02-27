@@ -708,14 +708,13 @@
         return;
       }
 
-      // Derive encryption key (implemented in Task 4)
       encryptionKey = await deriveKey(passphrase);
 
-      // Clear passphrase from the form
+      // Clear passphrase from the form immediately after use
       document.getElementById('passphrase').value = '';
 
       showApp();
-      await loadFiles();  // implemented in Task 6
+      await loadFiles();
     });
 
     signOutBtn.addEventListener('click', async () => {
