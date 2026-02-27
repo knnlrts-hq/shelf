@@ -357,6 +357,169 @@
     // ── Stub (replaced in Task 6) ────────────────────────────────
     async function loadFiles() {}
 
+    // ── DOM refs (upload) ───────────────────────────────────────
+    const dropZone      = document.getElementById('drop-zone');
+    const fileInput     = document.getElementById('file-input');
+    const fileInfo      = document.getElementById('file-info');
+    const fileInfoName  = document.getElementById('file-info-name');
+    const fileInfoSize  = document.getElementById('file-info-size');
+    const uploadBtn     = document.getElementById('upload-btn');
+    const clearFileBtn  = document.getElementById('clear-file-btn');
+    const uploadStatus  = document.getElementById('upload-status');
+
+    let selectedFile = null;
+
+    // ── Helpers ─────────────────────────────────────────────────
+    function formatBytes(bytes) {
+      if (bytes < 1024) return bytes + ' B';
+      if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+      return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+    }
+
+    function sanitizeFilename(name) {
+      return name.replace(/[^\w.\- ]+/g, '_');
+    }
+
+    function showUploadStatus(msg, isError) {
+      uploadStatus.textContent = msg;
+      uploadStatus.hidden = false;
+      uploadStatus.style.color = isError ? '#dc2626' : '#16a34a';
+    }
+
+    function clearUploadStatus() {
+      uploadStatus.hidden = true;
+    }
+
+    const ALLOWED_TYPES = new Set([
+      'text/plain',
+      'text/markdown',
+      'application/pdf',
+      'application/octet-stream',
+    ]);
+
+    function validateFile(file) {
+      if (file.size > MAX_FILE_SIZE) {
+        return `File too large (${formatBytes(file.size)}). Max is ${formatBytes(MAX_FILE_SIZE)}.`;
+      }
+      // Be lenient: some .md files have no MIME type. Allow empty type.
+      if (file.type && !ALLOWED_TYPES.has(file.type)) {
+        return `File type "${file.type}" not allowed. Use .txt, .md, or .pdf.`;
+      }
+      return null; // valid
+    }
+
+    // ── File selection ──────────────────────────────────────────
+    function selectFile(file) {
+      const err = validateFile(file);
+      if (err) {
+        showUploadStatus(err, true);
+        selectedFile = null;
+        fileInfo.hidden = true;
+        return;
+      }
+      clearUploadStatus();
+      selectedFile = file;
+      fileInfoName.textContent = file.name;
+      fileInfoSize.textContent = formatBytes(file.size);
+      fileInfo.hidden = false;
+    }
+
+    function clearFile() {
+      selectedFile = null;
+      fileInfo.hidden = true;
+      fileInput.value = '';
+      clearUploadStatus();
+    }
+
+    dropZone.addEventListener('click', () => fileInput.click());
+
+    dropZone.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      dropZone.classList.add('dragover');
+    });
+
+    dropZone.addEventListener('dragleave', () => {
+      dropZone.classList.remove('dragover');
+    });
+
+    dropZone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      dropZone.classList.remove('dragover');
+      if (e.dataTransfer.files.length > 0) {
+        selectFile(e.dataTransfer.files[0]);
+      }
+    });
+
+    fileInput.addEventListener('change', () => {
+      if (fileInput.files.length > 0) {
+        selectFile(fileInput.files[0]);
+      }
+    });
+
+    clearFileBtn.addEventListener('click', clearFile);
+
+    // ── Upload ──────────────────────────────────────────────────
+    uploadBtn.addEventListener('click', async () => {
+      if (!selectedFile || !encryptionKey) return;
+
+      uploadBtn.disabled = true;
+      showUploadStatus('Encrypting…', false);
+
+      try {
+        const { data: userData } = await sb.auth.getUser();
+        const user = userData.user;
+        if (!user) throw new Error('Not signed in');
+
+        // Read file bytes
+        const plainBytes = await selectedFile.arrayBuffer();
+
+        // Encrypt
+        const encryptedBytes = await encryptBlob(encryptionKey, plainBytes);
+
+        // Build path: userId/blobId/sanitizedFilename
+        const blobId = crypto.randomUUID();
+        const safeName = sanitizeFilename(selectedFile.name);
+        const objectPath = `${user.id}/${blobId}/${safeName}`;
+
+        showUploadStatus('Uploading…', false);
+
+        // Upload to Storage
+        const { error: uploadError } = await sb.storage
+          .from(BUCKET)
+          .upload(objectPath, encryptedBytes, {
+            contentType: 'application/octet-stream', // always octet-stream (encrypted)
+            upsert: false,
+          });
+
+        if (uploadError) throw uploadError;
+
+        // Insert metadata
+        const { error: metaError } = await sb.from('blob_index').insert({
+          id: blobId,
+          owner_id: user.id,
+          bucket_id: BUCKET,
+          object_path: objectPath,
+          filename: selectedFile.name,  // original name (for display)
+          content_type: selectedFile.type || 'application/octet-stream',
+          size_bytes: selectedFile.size, // original size (before encryption)
+        });
+
+        if (metaError) {
+          // Cleanup orphaned storage object
+          await sb.storage.from(BUCKET).remove([objectPath]);
+          throw metaError;
+        }
+
+        showUploadStatus('Uploaded successfully.', false);
+        clearFile();
+        await loadFiles();
+      } catch (err) {
+        showUploadStatus('Upload failed: ' + err.message, true);
+      } finally {
+        uploadBtn.disabled = false;
+      }
+    });
+
     // ── Auth ────────────────────────────────────────────────────
     function showLogin() {
       loginScreen.hidden = false;
