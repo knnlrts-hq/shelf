@@ -243,6 +243,26 @@ const uploadStatus  = document.getElementById('upload-status');
 
 let selectedFile = null;
 
+// ── Tabs ───────────────────────────────────────────────────
+const tabUpload  = document.getElementById('tab-upload');
+const tabPaste   = document.getElementById('tab-paste');
+const panelUpload = document.getElementById('panel-upload');
+const panelPaste  = document.getElementById('panel-paste');
+
+function switchTab(activeTab) {
+  const isUpload = activeTab === 'upload';
+
+  tabUpload.classList.toggle('active', isUpload);
+  tabPaste.classList.toggle('active', !isUpload);
+  panelUpload.hidden = !isUpload;
+  panelPaste.hidden = isUpload;
+
+  clearUploadStatus();
+}
+
+tabUpload.addEventListener('click', () => switchTab('upload'));
+tabPaste.addEventListener('click', () => switchTab('paste'));
+
 // ── Helpers ─────────────────────────────────────────────────
 function formatBytes(bytes) {
   if (bytes < 1024) return bytes + ' B';
