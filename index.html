@@ -133,6 +133,66 @@
       margin-bottom: 2rem;
     }
 
+    /* Upload tabs */
+    .upload-tabs {
+      display: flex;
+      gap: 0;
+      margin-bottom: 0;
+    }
+
+    .upload-tab {
+      padding: 0.5rem 1.25rem;
+      background: none;
+      border: none;
+      border-bottom: 2px solid transparent;
+      cursor: pointer;
+      font-size: 0.95rem;
+      color: #6b7280;
+      transition: color 0.2s, border-color 0.2s;
+    }
+
+    .upload-tab:hover {
+      color: #1a1a1a;
+    }
+
+    .upload-tab.active {
+      color: #2563eb;
+      border-bottom-color: #2563eb;
+      font-weight: 600;
+    }
+
+    /* Paste text panel */
+    .paste-panel {
+      margin-top: 0.75rem;
+    }
+
+    .paste-panel .form-group {
+      margin-bottom: 0.75rem;
+    }
+
+    .paste-panel textarea {
+      width: 100%;
+      padding: 0.5rem 0.75rem;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      font-family: ui-monospace, 'Cascadia Code', 'Source Code Pro', Menlo, Consolas, monospace;
+      font-size: 0.9rem;
+      resize: vertical;
+      line-height: 1.5;
+    }
+
+    .paste-panel .byte-counter {
+      font-size: 0.8rem;
+      color: #6b7280;
+      text-align: right;
+      margin-top: 0.25rem;
+    }
+
+    .paste-panel .byte-counter.over-limit {
+      color: #dc2626;
+      font-weight: 600;
+    }
+
     .files-section {
       margin-bottom: 2rem;
     }
