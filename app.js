@@ -263,6 +263,38 @@ function switchTab(activeTab) {
 tabUpload.addEventListener('click', () => switchTab('upload'));
 tabPaste.addEventListener('click', () => switchTab('paste'));
 
+// ── Paste helpers ──────────────────────────────────────────
+const EXT_CONTENT_TYPE = {
+  txt:      'text/plain',
+  md:       'text/markdown',
+  markdown: 'text/markdown',
+  json:     'application/json',
+  csv:      'text/csv',
+  html:     'text/html',
+  htm:      'text/html',
+  xml:      'application/xml',
+  yaml:     'text/yaml',
+  yml:      'text/yaml',
+};
+
+function contentTypeFromFilename(filename) {
+  const dot = filename.lastIndexOf('.');
+  if (dot === -1 || dot === filename.length - 1) return 'application/octet-stream';
+  const ext = filename.slice(dot + 1).toLowerCase();
+  return EXT_CONTENT_TYPE[ext] || 'application/octet-stream';
+}
+
+function validatePasteFilename(filename) {
+  if (!filename) {
+    return 'Filename is required and must include an extension (e.g. notes.md)';
+  }
+  const dot = filename.lastIndexOf('.');
+  if (dot <= 0 || dot === filename.length - 1) {
+    return 'Filename is required and must include an extension (e.g. notes.md)';
+  }
+  return null; // valid
+}
+
 // ── Helpers ─────────────────────────────────────────────────
 function formatBytes(bytes) {
   if (bytes < 1024) return bytes + ' B';
