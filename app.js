@@ -313,6 +313,95 @@ function updateByteCounter() {
 
 pasteText.addEventListener('input', updateByteCounter);
 
+function clearPaste() {
+  pasteFilename.value = '';
+  pasteText.value = '';
+  updateByteCounter();
+  clearUploadStatus();
+}
+
+pasteClearBtn.addEventListener('click', clearPaste);
+
+pasteUploadBtn.addEventListener('click', async () => {
+  if (!encryptionKey) return;
+
+  // Validate filename
+  const filename = pasteFilename.value.trim();
+  const filenameErr = validatePasteFilename(filename);
+  if (filenameErr) {
+    showUploadStatus(filenameErr, true);
+    return;
+  }
+
+  // Validate text content
+  const text = pasteText.value;
+  if (!text) {
+    showUploadStatus('Text content cannot be empty.', true);
+    return;
+  }
+
+  // Encode and check size
+  const plainBytes = textEncoder.encode(text);
+  if (plainBytes.byteLength > MAX_FILE_SIZE) {
+    showUploadStatus(`Text exceeds ${formatBytes(MAX_FILE_SIZE)} limit.`, true);
+    return;
+  }
+
+  pasteUploadBtn.disabled = true;
+  showUploadStatus('Encrypting…', false);
+
+  try {
+    const { data: userData } = await sb.auth.getUser();
+    const user = userData.user;
+    if (!user) throw new Error('Not signed in');
+
+    // Encrypt
+    const encryptedBytes = await encryptBlob(encryptionKey, plainBytes);
+
+    // Build path
+    const blobId = crypto.randomUUID();
+    const safeName = sanitizeFilename(filename);
+    const objectPath = `${user.id}/${blobId}/${safeName}`;
+
+    showUploadStatus('Uploading…', false);
+
+    // Upload to Storage
+    const { error: uploadError } = await sb.storage
+      .from(BUCKET)
+      .upload(objectPath, encryptedBytes, {
+        contentType: 'application/octet-stream',
+        upsert: false,
+      });
+
+    if (uploadError) throw uploadError;
+
+    // Insert metadata
+    const contentType = contentTypeFromFilename(filename);
+    const { error: metaError } = await sb.from('blob_index').insert({
+      id: blobId,
+      owner_id: user.id,
+      bucket_id: BUCKET,
+      object_path: objectPath,
+      filename: filename,
+      content_type: contentType,
+      size_bytes: plainBytes.byteLength,
+    });
+
+    if (metaError) {
+      await sb.storage.from(BUCKET).remove([objectPath]);
+      throw metaError;
+    }
+
+    showUploadStatus('Uploaded successfully.', false);
+    clearPaste();
+    await loadFiles();
+  } catch (err) {
+    showUploadStatus('Upload failed: ' + err.message, true);
+  } finally {
+    pasteUploadBtn.disabled = false;
+  }
+});
+
 // ── Helpers ─────────────────────────────────────────────────
 function formatBytes(bytes) {
   if (bytes < 1024) return bytes + ' B';
