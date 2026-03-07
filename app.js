@@ -295,6 +295,24 @@ function validatePasteFilename(filename) {
   return null; // valid
 }
 
+// ── Paste DOM refs ─────────────────────────────────────────
+const pasteFilename  = document.getElementById('paste-filename');
+const pasteText      = document.getElementById('paste-text');
+const byteCounter    = document.getElementById('byte-counter');
+const pasteUploadBtn = document.getElementById('paste-upload-btn');
+const pasteClearBtn  = document.getElementById('paste-clear-btn');
+
+const textEncoder = new TextEncoder();
+
+function updateByteCounter() {
+  const byteLength = textEncoder.encode(pasteText.value).byteLength;
+  const overLimit = byteLength > MAX_FILE_SIZE;
+  byteCounter.textContent = `${formatBytes(byteLength)} / ${formatBytes(MAX_FILE_SIZE)}`;
+  byteCounter.classList.toggle('over-limit', overLimit);
+}
+
+pasteText.addEventListener('input', updateByteCounter);
+
 // ── Helpers ─────────────────────────────────────────────────
 function formatBytes(bytes) {
   if (bytes < 1024) return bytes + ' B';
