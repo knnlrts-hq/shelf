@@ -298,19 +298,43 @@
 
     <main class="main-content">
       <section class="upload-section">
-        <div id="drop-zone" class="drop-zone" tabindex="0" role="button"
-             aria-label="Drop files here or click to browse">
-          <p>Drop files here or click to browse</p>
-          <p class="drop-zone-hint">Max 10 MB — text, markdown, PDF</p>
+        <div class="upload-tabs">
+          <button id="tab-upload" class="upload-tab active" type="button">Upload File</button>
+          <button id="tab-paste" class="upload-tab" type="button">Paste Text</button>
         </div>
-        <input type="file" id="file-input" hidden
-          accept=".txt,.md,.markdown,.pdf,text/plain,text/markdown,application/pdf">
-        <div id="file-info" class="file-info" hidden>
-          <span id="file-info-name"></span>
-          <span id="file-info-size"></span>
-          <button id="upload-btn" class="btn btn-primary" type="button">Upload</button>
-          <button id="clear-file-btn" class="btn" type="button">Clear</button>
+
+        <!-- Upload File panel (default visible) -->
+        <div id="panel-upload">
+          <div id="drop-zone" class="drop-zone" tabindex="0" role="button"
+               aria-label="Drop files here or click to browse">
+            <p>Drop files here or click to browse</p>
+            <p class="drop-zone-hint">Max 10 MB — text, markdown, PDF</p>
+          </div>
+          <input type="file" id="file-input" hidden
+            accept=".txt,.md,.markdown,.pdf,text/plain,text/markdown,application/pdf">
+          <div id="file-info" class="file-info" hidden>
+            <span id="file-info-name"></span>
+            <span id="file-info-size"></span>
+            <button id="upload-btn" class="btn btn-primary" type="button">Upload</button>
+            <button id="clear-file-btn" class="btn" type="button">Clear</button>
+          </div>
         </div>
+
+        <!-- Paste Text panel (hidden by default) -->
+        <div id="panel-paste" class="paste-panel" hidden>
+          <div class="form-group">
+            <label for="paste-filename">Filename</label>
+            <input type="text" id="paste-filename" placeholder="e.g. notes.md">
+          </div>
+          <div class="form-group">
+            <label for="paste-text">Text content</label>
+            <textarea id="paste-text" rows="8" placeholder="Paste your text here…"></textarea>
+            <div id="byte-counter" class="byte-counter">0 bytes / 10 MB</div>
+          </div>
+          <button id="paste-upload-btn" class="btn btn-primary" type="button">Upload</button>
+          <button id="paste-clear-btn" class="btn" type="button">Clear</button>
+        </div>
+
         <p id="upload-status" class="status-message" hidden></p>
       </section>
 
